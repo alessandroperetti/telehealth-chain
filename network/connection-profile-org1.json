@@ -1,8 +1,8 @@
 {
-  "name": "telehealth-chain-org2",
+  "name": "telehealth-chain-org1",
   "version": "1.0.0",
   "client": {
-    "organization": "Org2",
+    "organization": "Org1",
     "connection": {
       "timeout": {
         "peer": { "endorser": "300" }
@@ -10,30 +10,30 @@
     }
   },
   "organizations": {
-    "Org2": {
-      "mspid": "Org2MSP",
-      "peers": ["peer0.org2.example.com"],
-      "certificateAuthorities": ["ca.org2.example.com"]
+    "Org1": {
+      "mspid": "Org1MSP",
+      "peers": ["peer0.org1.example.com"],
+      "certificateAuthorities": ["ca.org1.example.com"]
     }
   },
   "peers": {
-    "peer0.org2.example.com": {
-      "url": "grpcs://localhost:9051",
+    "peer0.org1.example.com": {
+      "url": "grpcs://localhost:7051",
       "tlsCACerts": {
-        "path": "../fabric-samples/test-network/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt"
+        "path": "../fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt"
       },
       "grpcOptions": {
-        "ssl-target-name-override": "peer0.org2.example.com",
-        "hostnameOverride": "peer0.org2.example.com"
+        "ssl-target-name-override": "peer0.org1.example.com",
+        "hostnameOverride": "peer0.org1.example.com"
       }
     }
   },
   "certificateAuthorities": {
-    "ca.org2.example.com": {
-      "url": "https://localhost:8054",
-      "caName": "ca-org2",
+    "ca.org1.example.com": {
+      "url": "https://localhost:7054",
+      "caName": "ca-org1",
       "tlsCACerts": {
-        "path": "../fabric-samples/test-network/organizations/peerOrganizations/org2.example.com/ca/ca.org2.example.com-cert.pem"
+        "path": "../fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/ca/ca.org1.example.com-cert.pem"
       },
       "registrar": {
         "enrollId": "admin",
