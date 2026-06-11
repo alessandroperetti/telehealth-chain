@@ -55,8 +55,6 @@ type Payment struct {
 	Status      string    `json:"status"` // PENDING, PAID, DENIED
 }
 
-// ── Added: Private data structure for sensitive patient fields ─────────────────
-
 // PatientPrivateData holds sensitive data stored in private collections (Org1 only)
 type PatientPrivateData struct {
 	PatientID        string `json:"patientId"`
@@ -66,8 +64,6 @@ type PatientPrivateData struct {
 	Allergies        string `json:"allergies"`
 	EmergencyContact string `json:"emergencyContact"`
 }
-
-// ── Added: Insurance claim structure ─────────────────────────────────────────
 
 // InsuranceClaim represents a claim submitted by an insurer against a payment
 type InsuranceClaim struct {
@@ -81,8 +77,6 @@ type InsuranceClaim struct {
 	ProcessedAt time.Time `json:"processedAt,omitempty"`
 	Notes       string    `json:"notes,omitempty"`
 }
-
-// ── Added: Transaction history structure ──────────────────────────────────────
 
 // HistoryEntry represents a single entry in a key's transaction history
 type HistoryEntry struct {
@@ -105,7 +99,6 @@ func (s *EHRContract) InitLedgerEHR(ctx contractapi.TransactionContextInterface)
 		if err != nil {
 			return err
 		}
-
 		err = ctx.GetStub().PutState(patient.ID, patientJSON)
 		if err != nil {
 			return fmt.Errorf("failed to put to world state. %v", err)
@@ -128,8 +121,7 @@ func (s *PaymentContract) InitLedgerPayment(ctx contractapi.TransactionContextIn
 		if err != nil {
 			return err
 		}
-
-		err = ctx.GetStub().PutState(payment.ID, paymentJSON)
+		err = ctx.GetStub().PutState("Payment_"+payment.ID, paymentJSON)
 		if err != nil {
 			return fmt.Errorf("failed to put to world state. %v", err)
 		}
@@ -138,10 +130,9 @@ func (s *PaymentContract) InitLedgerPayment(ctx contractapi.TransactionContextIn
 	return nil
 }
 
-// ── EHR Functions (Alessandro's originals + RBAC added) ──────────────────────
+// ── EHR Functions ─────────────────────────────────────────────────────────────
 
 func (ec *EHRContract) AddPatient(ctx contractapi.TransactionContextInterface, id string, name string, dob string) error {
-	// Added: RBAC check
 	if err := CheckPermission(ctx, "AddPatient"); err != nil {
 		return err
 	}
@@ -171,7 +162,6 @@ func (ec *EHRContract) AddPatient(ctx contractapi.TransactionContextInterface, i
 }
 
 func (ec *EHRContract) AddMedicalRecord(ctx contractapi.TransactionContextInterface, patientID string, diagnosis string, treatment string) error {
-	// Added: RBAC check
 	if err := CheckPermission(ctx, "AddMedicalRecord"); err != nil {
 		return err
 	}
@@ -181,7 +171,6 @@ func (ec *EHRContract) AddMedicalRecord(ctx contractapi.TransactionContextInterf
 		return fmt.Errorf("failed to get client identity: %v", err)
 	}
 
-	// Uses getPatientInternal to avoid double RBAC check
 	patient, err := ec.getPatientInternal(ctx, patientID)
 	if err != nil {
 		return err
@@ -209,9 +198,8 @@ func (ec *EHRContract) AddMedicalRecord(ctx contractapi.TransactionContextInterf
 	return ctx.GetStub().PutState(patientID, patientJSON)
 }
 
-// ── Added: Private data functions ─────────────────────────────────────────────
+// ── Private Data Functions ────────────────────────────────────────────────────
 
-// SavePatientPrivateData stores sensitive patient data in Org1-only private collection
 func (ec *EHRContract) SavePatientPrivateData(ctx contractapi.TransactionContextInterface,
 	patientID string, ssn string, insuranceID string, bloodType string, allergies string, emergencyContact string) error {
 
@@ -244,7 +232,6 @@ func (ec *EHRContract) SavePatientPrivateData(ctx contractapi.TransactionContext
 	return ctx.GetStub().PutPrivateData("patientPrivateData", patientID, privateDataJSON)
 }
 
-// GetPatientPrivateData retrieves sensitive patient data from Org1-only private collection
 func (ec *EHRContract) GetPatientPrivateData(ctx contractapi.TransactionContextInterface, patientID string) (*PatientPrivateData, error) {
 	privateDataJSON, err := ctx.GetStub().GetPrivateData("patientPrivateData", patientID)
 	if err != nil {
@@ -266,10 +253,8 @@ func (ec *EHRContract) GetPatientPrivateData(ctx contractapi.TransactionContextI
 	return &privateData, nil
 }
 
-// ── Added: Transaction history ─────────────────────────────────────────────────
+// ── Transaction History ───────────────────────────────────────────────────────
 
-// GetTransactionHistory returns the full Fabric ledger history for any key,
-// providing the immutable audit trail described in the paper.
 func (ec *EHRContract) GetTransactionHistory(ctx contractapi.TransactionContextInterface, key string) ([]*HistoryEntry, error) {
 	if err := CheckPermission(ctx, "GetPatient"); err != nil {
 		return nil, err
@@ -308,12 +293,11 @@ func (ec *EHRContract) GetTransactionHistory(ctx contractapi.TransactionContextI
 	return history, nil
 }
 
-// ── Payment Functions (Alessandro's originals + RBAC added) ──────────────────
+// ── Payment Functions ─────────────────────────────────────────────────────────
 
 func (pc *PaymentContract) CreatePayment(ctx contractapi.TransactionContextInterface,
 	paymentID string, amount float64, patientID string, providerID string) error {
 
-	// Added: RBAC check
 	if err := CheckPermission(ctx, "CreatePayment"); err != nil {
 		return err
 	}
@@ -332,13 +316,12 @@ func (pc *PaymentContract) CreatePayment(ctx contractapi.TransactionContextInter
 		return err
 	}
 
-	
+	return ctx.GetStub().PutState("Payment_"+paymentID, paymentJSON)
 }
 
 func (pc *PaymentContract) UpdatePaymentStatus(ctx contractapi.TransactionContextInterface,
 	paymentID string, newStatus string) error {
 
-	// Added: RBAC check
 	if err := CheckPermission(ctx, "UpdatePaymentStatus"); err != nil {
 		return err
 	}
@@ -348,7 +331,6 @@ func (pc *PaymentContract) UpdatePaymentStatus(ctx contractapi.TransactionContex
 		return err
 	}
 
-	// Validate status transition (Alessandro's original logic, preserved)
 	if (payment.Status == "PENDING" && newStatus == "PAID") ||
 		(payment.Status == "PENDING" && newStatus == "DENIED") {
 		payment.Status = newStatus
@@ -361,7 +343,6 @@ func (pc *PaymentContract) UpdatePaymentStatus(ctx contractapi.TransactionContex
 		return err
 	}
 
-	// Added: access log entry
 	clientID, _ := GetCallerID(ctx)
 	_ = logAccessEvent(ctx, payment.PatientID, clientID,
 		fmt.Sprintf("Payment %s status changed to %s", paymentID, newStatus))
@@ -369,11 +350,8 @@ func (pc *PaymentContract) UpdatePaymentStatus(ctx contractapi.TransactionContex
 	return ctx.GetStub().PutState("Payment_"+paymentID, paymentJSON)
 }
 
-// ── Added: Insurance claim functions ─────────────────────────────────────────
+// ── Insurance Claim Functions ─────────────────────────────────────────────────
 
-// SubmitClaim allows an insurer to submit a claim against a PAID payment.
-// Claims at or below the AUTO_APPROVE_THRESHOLD (500.0) are auto-approved;
-// above it they remain SUBMITTED pending manual ProcessClaim.
 func (pc *PaymentContract) SubmitClaim(ctx contractapi.TransactionContextInterface,
 	claimID string, paymentID string, claimAmount float64, notes string) error {
 
@@ -425,7 +403,6 @@ func (pc *PaymentContract) SubmitClaim(ctx contractapi.TransactionContextInterfa
 	return ctx.GetStub().PutState("Claim_"+claimID, claimJSON)
 }
 
-// ProcessClaim allows manual approve/reject of SUBMITTED claims above the threshold
 func (pc *PaymentContract) ProcessClaim(ctx contractapi.TransactionContextInterface,
 	claimID string, decision string, notes string) error {
 
@@ -472,7 +449,7 @@ func (pc *PaymentContract) ProcessClaim(ctx contractapi.TransactionContextInterf
 	return ctx.GetStub().PutState("Claim_"+claimID, updatedJSON)
 }
 
-// ── Common Utilities (Alessandro's originals, preserved exactly) ──────────────
+// ── Common Utilities ──────────────────────────────────────────────────────────
 
 func (ec *EHRContract) PatientExists(ctx contractapi.TransactionContextInterface, id string) (bool, error) {
 	patientJSON, err := ctx.GetStub().GetState(id)
@@ -482,9 +459,7 @@ func (ec *EHRContract) PatientExists(ctx contractapi.TransactionContextInterface
 	return patientJSON != nil, nil
 }
 
-// GetPatient — public facing, with RBAC check and access logging added
 func (ec *EHRContract) GetPatient(ctx contractapi.TransactionContextInterface, id string) (*Patient, error) {
-	// Added: RBAC check
 	if err := CheckPermission(ctx, "GetPatient"); err != nil {
 		return nil, err
 	}
@@ -494,7 +469,6 @@ func (ec *EHRContract) GetPatient(ctx contractapi.TransactionContextInterface, i
 		return nil, err
 	}
 
-	// Added: access log entry
 	clientID, _ := GetCallerID(ctx)
 	patient.AccessLog = append(patient.AccessLog, Access{
 		Timestamp: time.Now(),
@@ -510,7 +484,6 @@ func (ec *EHRContract) GetPatient(ctx contractapi.TransactionContextInterface, i
 	return patient, nil
 }
 
-// getPatientInternal — reads patient without RBAC, for internal use by other functions
 func (ec *EHRContract) getPatientInternal(ctx contractapi.TransactionContextInterface, id string) (*Patient, error) {
 	patientJSON, err := ctx.GetStub().GetState(id)
 	if err != nil {
@@ -529,7 +502,6 @@ func (ec *EHRContract) getPatientInternal(ctx contractapi.TransactionContextInte
 	return &patient, nil
 }
 
-// GetPayment — Alessandro's original, preserved exactly (uses "Payment_" prefix)
 func (pc *PaymentContract) GetPayment(ctx contractapi.TransactionContextInterface, id string) (*Payment, error) {
 	paymentJSON, err := ctx.GetStub().GetState("Payment_" + id)
 	if err != nil {
@@ -548,13 +520,11 @@ func (pc *PaymentContract) GetPayment(ctx contractapi.TransactionContextInterfac
 	return &payment, nil
 }
 
-// GetPatientPayments retrieves all payments for a given patient
 func (pc *PaymentContract) GetPatientPayments(ctx contractapi.TransactionContextInterface, patientID string) ([]*Payment, error) {
 	if err := CheckPermission(ctx, "GetPatientPayments"); err != nil {
 		return nil, err
 	}
 
-	// Note: uses Payment_ prefix namespace consistent with GetPayment
 	resultsIterator, err := ctx.GetStub().GetStateByRange("Payment_", "Payment_~")
 	if err != nil {
 		return nil, fmt.Errorf("failed to query payments: %v", err)
@@ -579,8 +549,6 @@ func (pc *PaymentContract) GetPatientPayments(ctx contractapi.TransactionContext
 
 	return payments, nil
 }
-
-// ── Added: logAccessEvent helper ──────────────────────────────────────────────
 
 func logAccessEvent(ctx contractapi.TransactionContextInterface, patientID string, entityID string, purpose string) error {
 	patientJSON, err := ctx.GetStub().GetState(patientID)
@@ -608,13 +576,13 @@ func logAccessEvent(ctx contractapi.TransactionContextInterface, patientID strin
 	return ctx.GetStub().PutState(patientID, updatedJSON)
 }
 
-// ── main — registers all three contracts ──────────────────────────────────────
+// ── main ──────────────────────────────────────────────────────────────────────
 
 func main() {
 	chaincode, err := contractapi.NewChaincode(
 		&EHRContract{},
 		&PaymentContract{},
-		&ConsentContract{}, // Added
+		&ConsentContract{},
 	)
 
 	if err != nil {
