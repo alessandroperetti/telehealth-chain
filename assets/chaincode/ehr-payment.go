@@ -332,7 +332,7 @@ func (pc *PaymentContract) CreatePayment(ctx contractapi.TransactionContextInter
 		return err
 	}
 
-	return ctx.GetStub().PutState(paymentID, paymentJSON)
+	
 }
 
 func (pc *PaymentContract) UpdatePaymentStatus(ctx contractapi.TransactionContextInterface,
@@ -366,7 +366,7 @@ func (pc *PaymentContract) UpdatePaymentStatus(ctx contractapi.TransactionContex
 	_ = logAccessEvent(ctx, payment.PatientID, clientID,
 		fmt.Sprintf("Payment %s status changed to %s", paymentID, newStatus))
 
-	return ctx.GetStub().PutState(paymentID, paymentJSON)
+	return ctx.GetStub().PutState("Payment_"+paymentID, paymentJSON)
 }
 
 // ── Added: Insurance claim functions ─────────────────────────────────────────
