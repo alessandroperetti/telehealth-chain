@@ -322,7 +322,7 @@ func handleError(err error) {
 func newGrpcConnection() *grpc.ClientConn {
 	certificatePEM, err := os.ReadFile(tlsCertPath)
 	if err != nil {
-		panic(fmt.Errorf("failed to read TLS certifcate file: %w", err))
+		panic(fmt.Errorf("failed to read TLS certificate file: %w", err))
 	}
 	certificate, err := identity.CertificateFromPEM(certificatePEM)
 	if err != nil {
